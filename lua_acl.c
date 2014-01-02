@@ -73,7 +73,7 @@ int mosquitto_auth_security_init(void* udata, struct mosquitto_auth_opt* opts, i
 
 
 	if(luaL_loadfile(lstate, script_file) != 0) {
-		printf("Lua couldn't do file ...\n");
+		printf("Lua couldn't do file ...\n%s\n\n", lua_tostring(lstate, -1));
 		return MOSQ_ERR_UNKNOWN;
 	}
 	lua_pcall(lstate, 0, LUA_MULTRET, 0);

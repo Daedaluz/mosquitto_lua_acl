@@ -1,6 +1,9 @@
-for k, v in pairs(opt) do
-	print(k, "=", v)
-end
+curl = require 'cURL'
+json = require 'json'
+
+print("HELLO")
+
+USERAGENT = "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1)"
 
 print("------------------------------------------------------------")
 print(opt.test2)
@@ -11,12 +14,27 @@ function acl_check(id, username, topic, access)
 end
 
 function unpwd_check(username, pwd)
-	if username == "tobias" then 
-		print(username, "has access")
-		return(mosq_err_success)
+	c = curl.easy_init()
+	authorized = false
+	function test_authorized(response)
+		print(response)
+		js = json.decode(response)
+		if js.error ~= nil then
+			print("User not valid")
+			authorized = false
+		else
+			print("User", js.name, "connected")
+			authorized = true
+		end
 	end
-	print(username, "NO ACCESS!!!!")
-	return(mosq_err_auth)
+	c:setopt_url("https://www.googleapis.com/oauth2/v1/userinfo?access_token=" .. pwd .. "&token_type=Bearer")
+	c:setopt_useragent(USERAGENT)
+	c:perform({writefunction = test_authorized})
+	if authorized then
+		return(mosq_err_success)
+	else
+		return(mosq_err_auth)
+	end
 end
 
 function security_init(reload)
