@@ -3,6 +3,9 @@ json = require 'json'
 
 print("HELLO")
 
+
+print("Lua topic_matches_sub:", mosq_match("lol/+/+", "lol/adsb"))
+
 USERAGENT = "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1)"
 
 print("------------------------------------------------------------")

@@ -33,6 +33,22 @@ int mosquitto_auth_plugin_cleanup(void* udata, struct mosquitto_auth_opt* opts, 
 	return MOSQ_ERR_SUCCESS;
 }
 
+int mosq_match(const char* sub, const char* topic) {
+	bool res = 0;
+	mosquitto_topic_matches_sub(sub, topic, &res);
+	return res;
+}
+
+int lua_mosq_match(lua_State* l) {
+	int res = 0;
+	const char* topic = lua_tostring(l, -1);
+	const char* subscription = lua_tostring(l, -2);
+	res = mosq_match(subscription, topic);
+	lua_pop(l, 2);
+	lua_pushboolean(l, res);
+	return 1;
+}
+
 int mosquitto_auth_security_init(void* udata, struct mosquitto_auth_opt* opts, int nopts, bool reload) {
 	printf("plugin_security_init: nopts=%d, reload=%d\n", nopts, reload);
 	const char* script_file = get_auth_opt("scriptfile", opts, nopts);
@@ -41,6 +57,8 @@ int mosquitto_auth_security_init(void* udata, struct mosquitto_auth_opt* opts, i
 		return MOSQ_ERR_UNKNOWN;
 	}
 	
+	printf("SUB_MATCHES: %d\n", mosq_match("#", "asdf/lol"));
+
 	lstate = luaL_newstate();
 	if(lstate == NULL) {
 		printf("lua_open failed\n");
@@ -48,6 +66,9 @@ int mosquitto_auth_security_init(void* udata, struct mosquitto_auth_opt* opts, i
 	}
 	luaL_openlibs(lstate);
 	
+	lua_pushcfunction(lstate, lua_mosq_match);
+	lua_setglobal(lstate, "mosq_match");
+
 	lua_pushinteger(lstate, MOSQ_ERR_SUCCESS);
 	lua_setglobal(lstate, "mosq_err_success");
 	lua_pushinteger(lstate, MOSQ_ERR_AUTH);
