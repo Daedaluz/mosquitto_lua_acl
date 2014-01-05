@@ -29,7 +29,6 @@ int mosquitto_auth_plugin_init(void** udataptr, struct mosquitto_auth_opt* opts,
 }
 
 int mosquitto_auth_plugin_cleanup(void* udata, struct mosquitto_auth_opt* opts, int nopts) {
-	printf("plugin_cleanup: nopts=%d\n", nopts);
 	return MOSQ_ERR_SUCCESS;
 }
 
@@ -50,15 +49,12 @@ int lua_mosq_match(lua_State* l) {
 }
 
 int mosquitto_auth_security_init(void* udata, struct mosquitto_auth_opt* opts, int nopts, bool reload) {
-	printf("plugin_security_init: nopts=%d, reload=%d\n", nopts, reload);
 	const char* script_file = get_auth_opt("scriptfile", opts, nopts);
 	if (script_file == NULL) {
 		printf("this module need a target script to run, try set the auth_opt_scriptfile to a LUA-script\n");
 		return MOSQ_ERR_UNKNOWN;
 	}
 	
-	printf("SUB_MATCHES: %d\n", mosq_match("#", "asdf/lol"));
-
 	lstate = luaL_newstate();
 	if(lstate == NULL) {
 		printf("lua_open failed\n");
@@ -110,7 +106,6 @@ int mosquitto_auth_security_init(void* udata, struct mosquitto_auth_opt* opts, i
 }
 
 int mosquitto_auth_security_cleanup(void* udata, struct mosquitto_auth_opt* opts, int nopts, bool reload) {
-	printf("plugin_security_cleanup: nopts=%d, reload=%d\n", nopts, reload);
 	lua_getglobal(lstate, "security_cleanup");
 	if(lua_isfunction(lstate, -1)) {
 		lua_pushboolean(lstate, reload);
@@ -126,7 +121,6 @@ int mosquitto_auth_security_cleanup(void* udata, struct mosquitto_auth_opt* opts
 }
 
 int mosquitto_auth_acl_check(void* udata, const char* id, const char* username, const char* topic, int access) {
-	printf("plugin_acl_check: %s:%s:%s (%i)\n", id, username, topic, access);
 	lua_getglobal(lstate, "acl_check");
 	if(!lua_isfunction(lstate, -1)) {
 		printf("acl_check not defined!\n");
@@ -144,7 +138,6 @@ int mosquitto_auth_acl_check(void* udata, const char* id, const char* username, 
 }
 
 int mosquitto_auth_unpwd_check(void* udata, const char* uname, const char* pwd) {
-	printf("plugin_unpwd_check: %s:%s\n", uname, pwd);
 	lua_getglobal(lstate, "unpwd_check");
 	if(!lua_isfunction(lstate, -1)) {
 		printf("unpwd_check not defined!\n");
@@ -160,7 +153,6 @@ int mosquitto_auth_unpwd_check(void* udata, const char* uname, const char* pwd) 
 }
 
 int mosquitto_auth_psk_key_get(void *user_data, const char *hint, const char *identity, char *key, int max_key_len){
-	printf("plugin_psk_get_key: hint:%s, id=%s, key=%s, max_key_len=%d\n", hint, identity, key, max_key_len);
 	return MOSQ_ERR_SUCCESS;
 }
 

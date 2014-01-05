@@ -1,19 +1,15 @@
 curl = require 'cURL'
 json = require 'json'
 
-print("HELLO")
-
-
-print("Lua topic_matches_sub:", mosq_match("lol/+/+", "lol/adsb"))
 
 USERAGENT = "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1)"
 
-print("------------------------------------------------------------")
-print(opt.test2)
-
 function acl_check(id, username, topic, access)
-	print("---------------------",id, username, topic, access)
-	return(mosq_err_success)
+	if mosq_match("#", topic) then
+		return mosq_err_success
+	else
+		return mosq_acl_denind
+	end
 end
 
 function unpwd_check(username, pwd)
