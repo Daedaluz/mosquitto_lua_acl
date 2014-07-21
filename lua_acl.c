@@ -21,7 +21,7 @@ static char* get_auth_opt(const char* name, struct mosquitto_auth_opt* opts, int
 }
 
 int mosquitto_auth_plugin_version() {
-	return 2;
+	return MOSQ_AUTH_PLUGIN_VERSION;
 }
 
 int mosquitto_auth_plugin_init(void** udataptr, struct mosquitto_auth_opt* opts, int nopts) {
@@ -128,7 +128,11 @@ int mosquitto_auth_acl_check(void* udata, const char* id, const char* username, 
 		return MOSQ_ERR_ACL_DENIED;
 	}
 	lua_pushstring(lstate, id);
-	lua_pushstring(lstate, username);
+	if(username){
+		lua_pushstring(lstate, username);
+	} else {
+		lua_pushnil(lstate);
+	}
 	lua_pushstring(lstate, topic);
 	lua_pushinteger(lstate, access);
 	lua_call(lstate, 4, 1);
@@ -144,8 +148,16 @@ int mosquitto_auth_unpwd_check(void* udata, const char* uname, const char* pwd) 
 		lua_pop(lstate, 1);
 		return MOSQ_ERR_AUTH;
 	}
-	lua_pushstring(lstate, uname);
-	lua_pushstring(lstate, pwd);
+	if(uname){
+		lua_pushstring(lstate, uname);
+	} else {
+		lua_pushnil(lstate);
+	}
+	if(pwd) {
+		lua_pushstring(lstate, pwd);
+	} else {
+		lua_pushnil(lstate); 
+	}
 	lua_call(lstate, 2, 1);
 	int res = lua_tonumber(lstate, -1);
 	lua_pop(lstate, 1);
