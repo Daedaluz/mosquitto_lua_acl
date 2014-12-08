@@ -1,5 +1,0 @@
-#define ON 1
-#define OFF 0
-
-#define USE_SHIPPED_LUA OFF
-
