@@ -13,7 +13,8 @@ else (USE_SHIPPED_LUA)
 	set(LINK_LIBS lua)
 endif(USE_SHIPPED_LUA)
 
-target_link_libraries(lua_acl ${LINK_LIBS} mosquitto)
+configure_file(${CMAKE_SOURCE_DIR}/lua_acl.h.in ${CMAKE_SOURCE_DIR}/lua_acl.h)
 
+target_link_libraries(lua_acl ${LINK_LIBS} mosquitto)
 install(TARGETS lua_acl DESTINATION lib)
 

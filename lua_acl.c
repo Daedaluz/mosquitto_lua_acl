@@ -3,10 +3,19 @@
 #include <mosquitto.h>
 #include <mosquitto_plugin.h>
 
+
+#include "lua_acl.h"
+#if USE_SHIPPED_LUA
+#warning "USING SHIPPED LUA"
+#include "lua/lua.h"
+#include "lua/lualib.h"
+#include "lua/lauxlib.h"
+#else
+#warning "USING SYSTEM LUA"
 #include <lua.h>
 #include <lualib.h>
 #include <lauxlib.h>
-
+#endif
 static struct lua_State* lstate = NULL;
 
 static char* get_auth_opt(const char* name, struct mosquitto_auth_opt* opts, int nopts) {
