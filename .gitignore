@@ -1,3 +1,4 @@
 build
 *.swp
 lua_acl.h
+test/lua_acl.so
