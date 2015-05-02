@@ -1,0 +1,6 @@
+## Instructions
+
+	cmake . -DUSE_SHIPPED_LUA=0
+	make
+
+See `test/` for mosquitto config and sample script.
