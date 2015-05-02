@@ -2,7 +2,7 @@
 #include <string.h>
 #include <mosquitto.h>
 #include <mosquitto_plugin.h>
-
+#include <stdlib.h>
 
 #include "lua_acl.h"
 #if USE_SHIPPED_LUA
@@ -72,19 +72,11 @@ int mosquitto_auth_security_init(void* udata, struct mosquitto_auth_opt* opts, i
 	luaL_openlibs(lstate);
 	
 	lua_pushcfunction(lstate, lua_mosq_match);
-	lua_setglobal(lstate, "mosq_match");
-
-	lua_pushinteger(lstate, MOSQ_ERR_SUCCESS);
-	lua_setglobal(lstate, "mosq_err_success");
-	lua_pushinteger(lstate, MOSQ_ERR_AUTH);
-	lua_setglobal(lstate, "mosq_err_auth");
-	
+	lua_setglobal(lstate, "match");
 	lua_pushinteger(lstate, MOSQ_ACL_WRITE);
-	lua_setglobal(lstate, "mosq_acl_write");
+	lua_setglobal(lstate, "acl_write");
 	lua_pushinteger(lstate, MOSQ_ACL_READ);
-	lua_setglobal(lstate, "mosq_acl_read");
-	lua_pushinteger(lstate, MOSQ_ERR_ACL_DENIED);
-	lua_setglobal(lstate, "mosq_err_acl_denied");
+	lua_setglobal(lstate, "acl_read");
 
 	lua_newtable(lstate);
 	int top = lua_gettop(lstate);
@@ -99,10 +91,14 @@ int mosquitto_auth_security_init(void* udata, struct mosquitto_auth_opt* opts, i
 
 
 	if(luaL_loadfile(lstate, script_file) != 0) {
-		printf("Lua couldn't do file ...\n%s\n\n", lua_tostring(lstate, -1));
+		printf("Lua couldn't load file %s...\n%s\n\n", script_file, lua_tostring(lstate, -1));
 		return MOSQ_ERR_UNKNOWN;
 	}
-	lua_pcall(lstate, 0, LUA_MULTRET, 0);
+	if(lua_pcall(lstate, 0, LUA_MULTRET, 0) != 0) {
+		const char* emsg = lua_tostring(lstate, -1);
+		printf("error doing file: %s\n", emsg);
+		return MOSQ_ERR_UNKNOWN;
+	}
 
 	lua_getglobal(lstate, "security_init");
 	if(!lua_isfunction(lstate, -1)) {
@@ -145,9 +141,12 @@ int mosquitto_auth_acl_check(void* udata, const char* id, const char* username, 
 	lua_pushstring(lstate, topic);
 	lua_pushinteger(lstate, access);
 	lua_call(lstate, 4, 1);
-	int res = lua_tonumber(lstate, -1);
+	int test = lua_toboolean(lstate, -1);
 	lua_pop(lstate, 1);
-	return res;
+	if(test) {
+		return MOSQ_ERR_SUCCESS;
+	}
+	return MOSQ_ERR_ACL_DENIED;
 }
 
 int mosquitto_auth_unpwd_check(void* udata, const char* uname, const char* pwd) {
@@ -168,9 +167,13 @@ int mosquitto_auth_unpwd_check(void* udata, const char* uname, const char* pwd) 
 		lua_pushnil(lstate); 
 	}
 	lua_call(lstate, 2, 1);
-	int res = lua_tonumber(lstate, -1);
+
+	int test = lua_toboolean(lstate, -1);
 	lua_pop(lstate, 1);
-	return res;
+	if(test) {
+		return MOSQ_ERR_SUCCESS;
+	}
+	return MOSQ_ERR_AUTH;
 }
 
 int mosquitto_auth_psk_key_get(void *user_data, const char *hint, const char *identity, char *key, int max_key_len){

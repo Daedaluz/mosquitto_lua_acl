@@ -7,15 +7,17 @@ print("url:", opt.url)
 print("test1:", opt.test1)
 
 function acl_check(id, username, topic, access)
-	if mosq_match("#", topic) then
-		return mosq_err_success
+	print(id, username, topic, access)
+	if match("hello/#", topic) then
+		return true
 	else
-		return mosq_err_acl_denied
+		return false
 	end
 end
 
 function unpwd_check(username, pwd)
-	return mosq_err_success
+	print(username, pwd)
+	return true
 end
 
 function security_init(reload)
