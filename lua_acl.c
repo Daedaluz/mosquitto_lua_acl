@@ -57,22 +57,34 @@ int lua_mosq_match(lua_State* l) {
 	return 1;
 }
 
+int lua_mosq_log(lua_State* l) {
+	const char* msg = lua_tostring(l, -1);
+	printf("%s\n", msg);
+//	mosquitto_log_printf(MOSQ_LOG_INFO, msg);
+	return 0;
+}
+
 int mosquitto_auth_security_init(void* udata, struct mosquitto_auth_opt* opts, int nopts, bool reload) {
 	const char* script_file = get_auth_opt("scriptfile", opts, nopts);
 	if (script_file == NULL) {
-		printf("this module need a target script to run, try set the auth_opt_scriptfile to a LUA-script\n");
+		//mosquitto_log_printf(MOSQ_LOG_ERR, "%s", "this module need a target script to run, try set the auth_opt_scriptfile to a LUA-script");
+		printf("%s\n", "this module need a target script to run, try set the auth_opt_scriptfile to a LUA-script");
 		return MOSQ_ERR_UNKNOWN;
 	}
 	
 	lstate = luaL_newstate();
 	if(lstate == NULL) {
-		printf("lua_open failed\n");
+		//mosquitto_log_printf(MOSQ_LOG_ERR, "luaL_newstate() failed\n");
+		printf("%s\n", "luaL_newstate() failed");
 		return MOSQ_ERR_UNKNOWN;
 	}
 	luaL_openlibs(lstate);
 	
 	lua_pushcfunction(lstate, lua_mosq_match);
 	lua_setglobal(lstate, "match");
+	lua_pushcfunction(lstate, lua_mosq_log);
+	lua_setglobal(lstate, "log");
+
 	lua_pushinteger(lstate, MOSQ_ACL_WRITE);
 	lua_setglobal(lstate, "acl_write");
 	lua_pushinteger(lstate, MOSQ_ACL_READ);
@@ -91,11 +103,13 @@ int mosquitto_auth_security_init(void* udata, struct mosquitto_auth_opt* opts, i
 
 
 	if(luaL_loadfile(lstate, script_file) != 0) {
-		printf("Lua couldn't load file %s...\n%s\n\n", script_file, lua_tostring(lstate, -1));
+		//mosquitto_log_printf(MOSQ_LOG_ERR, "Lua couldn't load file %s", lua_tostring(lstate, -1));
+		printf("Lua couldn't load file %s\n", lua_tostring(lstate, -1));
 		return MOSQ_ERR_UNKNOWN;
 	}
 	if(lua_pcall(lstate, 0, LUA_MULTRET, 0) != 0) {
 		const char* emsg = lua_tostring(lstate, -1);
+		//mosquitto_log_printf(MOSQ_LOG_ERR, "error doing file: %s", emsg);
 		printf("error doing file: %s\n", emsg);
 		return MOSQ_ERR_UNKNOWN;
 	}
@@ -105,7 +119,11 @@ int mosquitto_auth_security_init(void* udata, struct mosquitto_auth_opt* opts, i
 		lua_pop(lstate, 1);
 	} else {
 		lua_pushboolean(lstate, reload);
-		lua_call(lstate, 1, 0);
+		if(lua_pcall(lstate, 1, 0, 0) != 0) {
+			//mosquitto_log_printf(MOSQ_LOG_ERR, "security_init failed: %s", lua_tostring(lstate, -1));
+			printf("security_init failed: %s\n", lua_tostring(lstate, -1));
+			return MOSQ_ERR_UNKNOWN;
+		}
 	}
 	return MOSQ_ERR_SUCCESS;
 }
@@ -114,7 +132,11 @@ int mosquitto_auth_security_cleanup(void* udata, struct mosquitto_auth_opt* opts
 	lua_getglobal(lstate, "security_cleanup");
 	if(lua_isfunction(lstate, -1)) {
 		lua_pushboolean(lstate, reload);
-		lua_call(lstate, 1, 0);
+		if(lua_pcall(lstate, 1, 0, 0) != 0) {
+			//mosquitto_log_printf(MOSQ_ERR, "security_cleanup failed: %s", lua_tostring(lstate, -1));
+			printf("security_cleanup failed: %s\n", lua_tostring(lstate, -1));
+			//what to do?!
+		}
 	} else {
 		lua_pop(lstate, 1);
 	}
@@ -128,6 +150,7 @@ int mosquitto_auth_security_cleanup(void* udata, struct mosquitto_auth_opt* opts
 int mosquitto_auth_acl_check(void* udata, const char* id, const char* username, const char* topic, int access) {
 	lua_getglobal(lstate, "acl_check");
 	if(!lua_isfunction(lstate, -1)) {
+		//mosquitto_log_printf(MOSQ_LOG_ERR, "acl_check not defined!");
 		printf("acl_check not defined!\n");
 		lua_pop(lstate, 1);
 		return MOSQ_ERR_ACL_DENIED;
@@ -140,7 +163,12 @@ int mosquitto_auth_acl_check(void* udata, const char* id, const char* username, 
 	}
 	lua_pushstring(lstate, topic);
 	lua_pushinteger(lstate, access);
-	lua_call(lstate, 4, 1);
+	if(lua_pcall(lstate, 4, 1, 0) != 0) {
+		//mosquitto_log_printf(MOSQ_LOG_ERR, "acl_check failed: %s", lua_tostring(lstate, -1));
+		printf("acl_check failed: %s\n", lua_tostring(lstate, -1));
+		lua_pop(lstate, 1);
+		return MOSQ_ERR_ACL_DENIED;
+	}
 	int test = lua_toboolean(lstate, -1);
 	lua_pop(lstate, 1);
 	if(test) {
@@ -152,6 +180,7 @@ int mosquitto_auth_acl_check(void* udata, const char* id, const char* username, 
 int mosquitto_auth_unpwd_check(void* udata, const char* uname, const char* pwd) {
 	lua_getglobal(lstate, "unpwd_check");
 	if(!lua_isfunction(lstate, -1)) {
+		//mosquitto_log_printf(MOSQ_LOG_ERR, "unpwd_check not defined!");
 		printf("unpwd_check not defined!\n");
 		lua_pop(lstate, 1);
 		return MOSQ_ERR_AUTH;
@@ -166,7 +195,13 @@ int mosquitto_auth_unpwd_check(void* udata, const char* uname, const char* pwd) 
 	} else {
 		lua_pushnil(lstate); 
 	}
-	lua_call(lstate, 2, 1);
+
+	if(lua_pcall(lstate, 2, 1, 0) != 0) {
+		//mosquitto_log_printf(MOSQ_LOG_ERR, "unpwd_check failed: %s", lua_tostring(lstate, -1));
+		printf("unpwd_check failed: %s\n", lua_tostring(lstate, -1));
+		lua_pop(lstate, 1);
+		return MOSQ_ERR_AUTH;
+	}
 
 	int test = lua_toboolean(lstate, -1);
 	lua_pop(lstate, 1);
