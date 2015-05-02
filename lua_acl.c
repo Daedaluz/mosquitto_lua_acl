@@ -111,6 +111,7 @@ int mosquitto_auth_security_init(void* udata, struct mosquitto_auth_opt* opts, i
 		const char* emsg = lua_tostring(lstate, -1);
 		//mosquitto_log_printf(MOSQ_LOG_ERR, "error doing file: %s", emsg);
 		printf("error doing file: %s\n", emsg);
+		lua_pop(lstate, 1);
 		return MOSQ_ERR_UNKNOWN;
 	}
 
@@ -122,6 +123,7 @@ int mosquitto_auth_security_init(void* udata, struct mosquitto_auth_opt* opts, i
 		if(lua_pcall(lstate, 1, 0, 0) != 0) {
 			//mosquitto_log_printf(MOSQ_LOG_ERR, "security_init failed: %s", lua_tostring(lstate, -1));
 			printf("security_init failed: %s\n", lua_tostring(lstate, -1));
+			lua_pop(lstate, 1);
 			return MOSQ_ERR_UNKNOWN;
 		}
 	}
@@ -135,6 +137,7 @@ int mosquitto_auth_security_cleanup(void* udata, struct mosquitto_auth_opt* opts
 		if(lua_pcall(lstate, 1, 0, 0) != 0) {
 			//mosquitto_log_printf(MOSQ_ERR, "security_cleanup failed: %s", lua_tostring(lstate, -1));
 			printf("security_cleanup failed: %s\n", lua_tostring(lstate, -1));
+			lua_pop(lstate, 1);
 			//what to do?!
 		}
 	} else {
