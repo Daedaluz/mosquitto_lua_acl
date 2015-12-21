@@ -3,9 +3,10 @@ log("test1:" .. opt.test1)
 
 fmt = string.format
 
-function acl_check(id, username, topic, access)
+function acl_check(id, username, topic, payload, access)
 	log(fmt("%s %s %s %d", id, username, topic, access))
 	if match("hello/#", topic) then
+		log(fmt("Payload: %s", payload))
 		return true
 	else
 		return false

@@ -150,7 +150,7 @@ int mosquitto_auth_security_cleanup(void* udata, struct mosquitto_auth_opt* opts
 	return MOSQ_ERR_SUCCESS;
 }
 
-int mosquitto_auth_acl_check(void* udata, const char* id, const char* username, const char* topic, int access) {
+int mosquitto_auth_acl_check(void* udata, const char* id, const char* username, const char* topic, int payloadlen, const char* payload, int access) {
 	lua_getglobal(lstate, "acl_check");
 	if(!lua_isfunction(lstate, -1)) {
 		mosquitto_log_printf(MOSQ_LOG_ERR, "acl_check not defined!");
@@ -165,8 +165,9 @@ int mosquitto_auth_acl_check(void* udata, const char* id, const char* username, 
 		lua_pushnil(lstate);
 	}
 	lua_pushstring(lstate, topic);
+	lua_pushlstring(lstate, payload, payloadlen);
 	lua_pushinteger(lstate, access);
-	if(lua_pcall(lstate, 4, 1, 0) != 0) {
+	if(lua_pcall(lstate, 5, 1, 0) != 0) {
 		mosquitto_log_printf(MOSQ_LOG_ERR, "acl_check failed: %s", lua_tostring(lstate, -1));
 		//printf("acl_check failed: %s\n", lua_tostring(lstate, -1));
 		lua_pop(lstate, 1);
